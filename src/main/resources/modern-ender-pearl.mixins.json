@@ -1,0 +1,23 @@
+{
+	"required": true,
+	"package": "com.frankloq.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+      	"ThrownEnderpearlMixin",
+		"EntityMixin",
+		"EntityAccessor",
+		"EntityCooldownAccessor",
+		"ServerChunkCacheMixin",
+		"ServerPlayerAccessor",
+		"ServerPlayerMixin",
+		"NetherPortalBlockMixin",
+		"EndPortalBlockMixin",
+		"PlayerListMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
