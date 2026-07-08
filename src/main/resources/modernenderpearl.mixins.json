@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "package": "com.frankloq.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EntityMixin",
+    "ServerChunkCacheMixin",
+    "ServerPlayerAccessor",
+    "ServerPlayerMixin",
+    "ThrownEnderpearlMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
