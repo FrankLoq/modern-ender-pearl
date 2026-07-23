@@ -36,40 +36,35 @@ public abstract class ThrownEnderpearlMixin {
     private void interceptPortalFlight(CallbackInfo ci) {
         ThrownEnderpearl pearl = (ThrownEnderpearl) (Object) this;
 
-        if (pearl.level().isClientSide() || pearl.isRemoved() || pearl.isOnPortalCooldown()) return;
+        if (pearl.level().isClientSide() || pearl.isRemoved() || pearl.isOnPortalCooldown() || !ModConfig.canGoThroughPortals()) return;
 
         Vec3 start = pearl.position();
-        Vec3 defaultEnd = start.add(pearl.getDeltaMovement());
+        Vec3 end = start.add(pearl.getDeltaMovement());
 
-        // The block raytrace
-        HitResult hitResult = pearl.level().clip(new ClipContext(start, defaultEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, pearl));
-
-        Vec3 end = hitResult.getType() != HitResult.Type.MISS ? hitResult.getLocation() : defaultEnd;
-
-        // Create the precise bounding box
         AABB flightBox = pearl.getBoundingBox().expandTowards(end.subtract(start));
 
-        Iterable<BlockPos> positions = BlockPos.betweenClosed(
-                (int) Math.floor(flightBox.minX), (int) Math.floor(flightBox.minY), (int) Math.floor(flightBox.minZ),
-                (int) Math.floor(flightBox.maxX), (int) Math.floor(flightBox.maxY), (int) Math.floor(flightBox.maxZ)
-        );
+        // Trace along the path vector without calling clip, this way we avoid interfering with Sable's collision logic
+        double distance = start.distanceTo(end);
+        int steps = Math.max(1, (int) (distance * 2.0));
 
-        for (BlockPos pos : positions) {
-            BlockState state = pearl.level().getBlockState(pos);
+        for (int i = 0; i <= steps; i++) {
+            double t = (double) i / (double) steps;
+            double x = start.x + (end.x - start.x) * t;
+            double y = start.y + (end.y - start.y) * t;
+            double z = start.z + (end.z - start.z) * t;
+            BlockPos pos = BlockPos.containing(x, y, z);
 
+            // Get the chunk without forcing a load (create=false)
+            net.minecraft.world.level.chunk.ChunkAccess chunk = pearl.level().getChunk(pos.getX() >> 4, pos.getZ() >> 4, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false);
+            if (chunk == null) {
+                continue;
+            }
+
+            BlockState state = chunk.getBlockState(pos);
             if (state.getBlock() instanceof NetherPortalBlock || state.getBlock() instanceof EndPortalBlock) {
-
-                // Pane Check
                 VoxelShape portalShape = state.getShape(pearl.level(), pos);
 
                 if (!portalShape.isEmpty() && portalShape.bounds().move(pos).intersects(flightBox)) {
-                    // If going through portals is disabled, destroy the pearl to stop vanilla behavior
-                    if (!ModConfig.canGoThroughPortals()) {
-                        pearl.discard();
-                        ci.cancel();
-                        return;
-                    }
-
                     ServerLevel currentLevel = (ServerLevel) pearl.level();
                     ServerLevel targetLevel = state.getBlock() instanceof EndPortalBlock
                             ? currentLevel.getServer().getLevel(currentLevel.dimension() == Level.END ? Level.OVERWORLD : Level.END)
@@ -91,7 +86,6 @@ public abstract class ThrownEnderpearlMixin {
                             ServerPlayer player = currentLevel.getServer().getPlayerList().getPlayer(ownerId);
 
                             if (player != null && !player.isSleeping()) {
-
                                 player.teleportTo(currentLevel, pearl.getX(), pearl.getY(), pearl.getZ(), player.getYRot(), player.getXRot());
 
                                 if (state.getBlock() instanceof net.minecraft.world.level.block.Portal portal) {
