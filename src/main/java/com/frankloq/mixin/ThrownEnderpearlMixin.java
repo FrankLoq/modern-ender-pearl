@@ -8,10 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ThrownEnderpearl;
-import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.Portal;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.EndPortalBlock;
-import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.portal.DimensionTransition;
@@ -60,17 +58,16 @@ public abstract class ThrownEnderpearlMixin {
                 continue;
             }
 
+            // Instead of having hard-coded the Nether and End portal blocks
+            // Now it'll match any block implementing the Portal interface
+            // Thus making it compatible with mods such as The Aether or Twilight Forest
             BlockState state = chunk.getBlockState(pos);
-            if (state.getBlock() instanceof NetherPortalBlock || state.getBlock() instanceof EndPortalBlock) {
+            if (state.getBlock() instanceof Portal portal) {
                 VoxelShape portalShape = state.getShape(pearl.level(), pos);
 
                 if (!portalShape.isEmpty() && portalShape.bounds().move(pos).intersects(flightBox)) {
                     ServerLevel currentLevel = (ServerLevel) pearl.level();
-                    ServerLevel targetLevel = state.getBlock() instanceof EndPortalBlock
-                            ? currentLevel.getServer().getLevel(currentLevel.dimension() == Level.END ? Level.OVERWORLD : Level.END)
-                            : currentLevel.getServer().getLevel(currentLevel.dimension() == Level.NETHER ? Level.OVERWORLD : Level.NETHER);
 
-                    if (targetLevel != null) {
                         UUID ownerId = null;
                         if (pearl.getOwner() != null) {
                             ownerId = pearl.getOwner().getUUID();
@@ -88,8 +85,7 @@ public abstract class ThrownEnderpearlMixin {
                             if (player != null && !player.isSleeping()) {
                                 player.teleportTo(currentLevel, pearl.getX(), pearl.getY(), pearl.getZ(), player.getYRot(), player.getXRot());
 
-                                if (state.getBlock() instanceof net.minecraft.world.level.block.Portal portal) {
-                                    DimensionTransition transition = portal.getPortalDestination(currentLevel, player, pos);
+                                DimensionTransition transition = portal.getPortalDestination(currentLevel, player, pos);
 
                                     if (transition != null) {
                                         Entity migratedEntity = player.changeDimension(transition);
@@ -101,8 +97,6 @@ public abstract class ThrownEnderpearlMixin {
                                     }
                                 }
                             }
-                        }
-                    }
 
                     pearl.discard();
                     ci.cancel();
