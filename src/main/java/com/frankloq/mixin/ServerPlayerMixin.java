@@ -1,6 +1,7 @@
 package com.frankloq.mixin;
 
 import com.frankloq.access.PearlTransitionAccessor;
+import com.frankloq.compat.WarpDriveCompat;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -67,23 +68,26 @@ public abstract class ServerPlayerMixin implements PearlTransitionAccessor {
 
                 ServerLevel targetLevel = (ServerLevel) player.level();
 
-                // Remove spawn invulnerability
-                player.invulnerableTime = 0;
-                if (player instanceof ServerPlayerAccessor accessor) {
-                    accessor.setSpawnInvulnerableTime(0);
-                }
+                // Compat with the item Warp Drive from the mod Artifacts
+                if (!WarpDriveCompat.hasEnderPearlDamageImmunity(player)) {
+                    // Remove spawn invulnerability
+                    player.invulnerableTime = 0;
+                    if (player instanceof ServerPlayerAccessor accessor) {
+                        accessor.setSpawnInvulnerableTime(0);
+                    }
 
-                // Deal damage
-                player.resetFallDistance();
-                player.hurt(targetLevel.damageSources().fall(), 5.0F);
+                    // Deal damage
+                    player.resetFallDistance();
+                    player.hurt(targetLevel.damageSources().fall(), 5.0F);
+
+                    // Restore the spawn invulnerability
+                    if (player instanceof ServerPlayerAccessor accessor) {
+                        accessor.setSpawnInvulnerableTime(60);
+                    }
+                }
 
                 // Play the teleport sound
                 targetLevel.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_TELEPORT, SoundSource.PLAYERS);
-
-                // Restore the spawn invulnerability
-                if (player instanceof ServerPlayerAccessor accessor) {
-                    accessor.setSpawnInvulnerableTime(60);
-                }
 
                 // Endermite spawning
                 if (targetLevel.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && targetLevel.random.nextFloat() < 0.05F) {
